@@ -1,6 +1,6 @@
 # Imjector
 ## About
-This is a simple project that uses Dear Imgui for frontend with DirectX9 bindings.
+This is a simple project that uses Dear Imgui for frontend with DirectX9 bindings. It uses manual mapping for dll injection.
 
 ## Screenshots
 ![](https://github.com/epsilonr/imjector/blob/main/assets/ss/ss1.png)
@@ -9,4 +9,4 @@ This is a simple project that uses Dear Imgui for frontend with DirectX9 binding
 ## Todo:
 * Add imgui styling.
 * Add fonts
-* Add another injection methods.
+* Add other injection methods.
