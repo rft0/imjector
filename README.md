@@ -17,5 +17,5 @@ If you don't want to tackle with building you can downlaod pre-compiled binaries
 * Download GNU Make from choco and LLVM. (Instead you can use cl.exe too)
 * Run `make`.
 
-## Todo:
+## Todo
 * Add kernelmode manual mapping
