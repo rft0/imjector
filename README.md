@@ -5,7 +5,7 @@ Imjector is a DLL injector developed in C++ with an front end created using ImGu
 ![](https://github.com/epsilonr/imjector/blob/main/img/ss0.png)
 
 ## Building
-If you don't want to tackle with building you can downlaod pre-compiled binaries from [here](https://github.com/rft0/imjector/releases).
+If you don't want to tackle with building you can download pre-compiled binaries from [here](https://github.com/rft0/imjector/releases).
 
 ### Requirements
 * MSVC
