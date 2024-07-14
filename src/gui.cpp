@@ -1,86 +1,107 @@
-#include <thread>
-#include <vector>
 
-#include "../imgui/imgui.h"
-
+#include "imgui/imgui.h"
 #include "globals.h"
-
 #include "gui.h"
 #include "injector.h"
 
-bool procPopup = false;
+#define IM_PAD(x, y) ImGui::Dummy(ImVec2(x, y))
 
-ProcessData selectedProc{};
+static char szFilter[MAX_PATH] = "";
+static bool bPopup = false;
 
-char inputProcBuffer[257] = "";
-
-std::string dllName;
-std::string dllPath;
-
-std::vector <ProcessData> procs = injector::GetAllProcesses(inputProcBuffer);
 void gui::Update() {
-    // Weird Bug: If I set pos before ahead window becomes not moveable.
-    //ImGui::SetNextWindowPos({ 0, 0 });
-    ImGui::SetNextWindowSize({ g::WINDOW_WIDTH, 192 });
-    ImGui::Begin("Injector", &g::isRunning, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
-    if (procPopup) {
-        ImGui::SetNextWindowSize({ g::WINDOW_WIDTH, g::WINDOW_HEIGHT });
-        ImGui::OpenPopup("Processes");
-    }
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 8, 8 });
+    ImGui::Begin(GWINDOW_TITLE, &g::isRunning, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
+    ImGui::PopStyleVar();
 
-    if (ImGui::BeginPopupModal("Processes", &procPopup, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
-        ImGui::Text("Select a process.");
-        ImGui::Text("Filter:");
-        ImGui::SameLine();
-        if (ImGui::InputText("##ProcInput", inputProcBuffer, sizeof(inputProcBuffer))) {
-            if (strlen(inputProcBuffer) > 256)
-                inputProcBuffer[256] = '\0';
+    ImGui::Text("Status: %s", Injector::bStatus? (Injector::GetError()[0] == '\0'? "Injected successfully." : "An error occurred.") : "");
 
-            procs = injector::GetAllProcesses(inputProcBuffer);
-        }
+    IM_PAD(0.0f, 4.0f);
 
-        ImGui::BeginChild("Scrolling");
-        for (ProcessData procd : procs)
-            if (ImGui::MenuItem(procd.processName.c_str())) {
-                selectedProc = procd;
-                procPopup = false;
-            }
+    // ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+    // IM_PAD(ImGui::GetWindowWidth(), 2.0f);
+    // ImGui::PopStyleColor();
 
-        ImGui::EndChild();
-        ImGui::EndPopup();
-    }
+    // IM_PAD(0.0f, 4.0f);
 
     ImGui::Text("Process Name:");
-
-    ImGui::Text("%s", selectedProc.processName.c_str());
-    if (ImGui::Button("Select Process", { 240, 0 }))
-        procPopup = true;
-
-    ImGui::Text("DLL Name:");
-    ImGui::Text("%s", dllName.c_str());
-    if (ImGui::Button("Select DLL", { 240, 0 })) {
-        injector::OpenFileDialog(dllPath);
-
-        size_t sep = dllPath.find_last_of("/\\");
-        if (sep != std::string::npos)
-            dllName = dllPath.substr(sep + 1);
+    ImGui::Text("%s", Injector::currentProcess.szProcessName);
+    ImGui::SameLine(ImGui::GetWindowWidth() - 72);
+    if (ImGui::Button("Select##ProcessListButton", { 64, 0 })) {
+        ImGui::OpenPopup("Process List");
+        Injector::UpdateProcessList();
+        Injector::UpdateFilteredProcessList(szFilter);
+        bPopup = true;
     }
 
-    //! TODO: Add platform detection, warn if there is a platform mismatch between dll and application. (Ex: x64 app, x86 dll etc...)
+    IM_PAD(0.0f, 4.0f);
+
+    ImGui::Text("DLL Name:");
+    ImGui::Text("%s", Injector::szDllName);
+    ImGui::SameLine(ImGui::GetWindowWidth() - 72);
+    if (ImGui::Button("Select##OFNButton", { 64, 0 }))
+        Injector::OpenFileDialog();
+
+    IM_PAD(0.0f, 4.0f);
+
+    ImGui::Text("Injection Method:");
+    ImGui::SetNextItemWidth(ImGui::GetWindowWidth() - 16);
+    ImGui::Combo("##InjectionMethod", (int*)&Injector::currentMethod, "Load Library\0Manual Map\0");
+
+    IM_PAD(0.0f, 8.0f);
+
+    ImGui::SetNextItemWidth(ImGui::GetWindowWidth() - 16);
+    ImGui::BeginDisabled(Injector::currentProcess.szProcessName[0] == '\0' || Injector::szDllPath[0] == '\0');
     if (ImGui::Button("Inject", { 240, 32 })) {
+        if (!Injector::Inject())
+            MessageBoxA(GetActiveWindow(), Injector::GetError(), "DLL Injection Error", MB_ICONERROR);
 
-        if (selectedProc.processName.empty() || dllPath.empty())
-            MessageBox(GetActiveWindow(), "You must select process and DLL First.", "Warning!", MB_ICONWARNING);
-        else {
-            bool res = injector::Inject(selectedProc.processId, dllPath.c_str());
-            if (res) MessageBox(GetActiveWindow(), "DLL injected successfully.", "Success!", MB_OK);
-            else MessageBox(GetActiveWindow(), "Failed to inject DLL.", "Fail!", MB_ICONERROR);
+        szFilter[0] = '\0';
+        Injector::currentProcess.szProcessName[0] = '\0';
+        Injector::currentProcess.dwPid = 0;
+        Injector::szDllName[0] = '\0';
+        Injector::szDllPath[0] = '\0';
+    }
+    ImGui::EndDisabled();
 
-            inputProcBuffer[0] = '\0';
-            selectedProc = {};
-            dllName = "";
-            dllPath = "";
+    ImGui::SetNextWindowSize({ 400, 300 }, ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("Process List", &bPopup, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        IM_PAD(0.0f, 4.0f);
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Filter:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() - 128);
+        if (ImGui::InputText("##ProcInput", szFilter, sizeof(szFilter))) {
+            if (strlen(szFilter) > MAX_PATH - 1)
+                szFilter[MAX_PATH - 1] = '\0';
+
+            Injector::UpdateFilteredProcessList(szFilter);
         }
+        ImGui::SameLine(ImGui::GetWindowWidth() - 72);
+        if (ImGui::Button("Refresh", { 64, 0 })) {
+            Injector::UpdateProcessList();
+            Injector::UpdateFilteredProcessList(szFilter);
+        }
+
+        IM_PAD(0.0f, 4.0f);
+
+        if (ImGui::BeginChild("Scrolling")) {
+            for (ProcessData proc : Injector::vecFilteredProcs) {
+                if (ImGui::MenuItem(proc.szProcessName)) {
+                    Injector::currentProcess = proc;
+                    ImGui::CloseCurrentPopup();
+                    bPopup = false;
+                }
+
+                ImGui::SameLine(ImGui::GetWindowWidth() - 48);
+                ImGui::Text("%s", proc.arch == ARCH_X86 ? "x86" : "x64");
+            }
+            
+            ImGui::EndChild();
+        }
+
+        ImGui::EndPopup();
     }
 
     ImGui::End();

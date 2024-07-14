@@ -1,8 +1,11 @@
 #pragma once
 
-namespace g {
-	constexpr int WINDOW_WIDTH = 256;
-	constexpr int WINDOW_HEIGHT = 400;
+#define WINDOW_WIDTH 300
+#define WINDOW_HEIGHT 400
 
-	inline bool isRunning = true;
+#define WINDOW_TITLE "Injector"
+#define GWINDOW_TITLE "Injector ~ github.com/rft0/imjector"
+
+namespace g {
+	extern bool isRunning;
 }

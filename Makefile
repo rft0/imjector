@@ -1,21 +1,18 @@
 CC = clang
 FLAGS = -std=c++20 -Wall
 
-TARGET_DIR = ./bin
-TARGET_NAME = out.exe
+TARGET_X86 = ./bin/imjector_x86.exe
+TARGET_X64 = ./bin/imjector_x64.exe
 
-LLIBS = -ld3d9 -luser32 -lcomdlg32
+LIBS = -ld3d9 -luser32 -lcomdlg32 -lShlwapi
 
 SRC_FILES = $(wildcard src/*.cpp)
-IMGUI_FILES = $(wildcard imgui/*.cpp)
+IMGUI_FILES = $(wildcard src/imgui/*.cpp)
 
-all: build
+all: x86 x64
 
-build:
-	$(CC) $(FLAGS) $(IMGUI_FILES) $(SRC_FILES) -o $(TARGET_DIR)/$(TARGET_NAME) $(LLIBS)
+x86:
+	$(CC) $(IMGUI_FILES) $(SRC_FILES) $(FLAGS) -m32 $(LIBS) -o $(TARGET_X86)
 
-run:
-	$(TARGET_DIR)/$(TARGET_NAME)
-
-clean:
-	rm -rf ./bin/*
+x64:
+	$(CC) $(IMGUI_FILES) $(SRC_FILES) $(FLAGS) $(LIBS) -o $(TARGET_X64)
